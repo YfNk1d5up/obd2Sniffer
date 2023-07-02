@@ -16,6 +16,9 @@ class SerialReaderThread(QThread):
     def stop(self):
         self.isRunning = False
 
+    def changeProtocol(self, protocol):
+        self.protocol = protocol
+
     def run(self):
         self.isRunning = True
         """
@@ -53,10 +56,12 @@ class SerialReaderThread(QThread):
                 try:
                     decodedData = r.decode("utf-8")
                     if self.protocol == 'SCP':
+                        #print(decodedData)
                         # Reorder to unify results on Gui
                         # SCP consists in :
-                        #PP RR TT DD DD DD DD DD DD DD CC - where PP = priority, RR = receiver ID, TT = transmitter ID, DD = data, CC = checksum.
-                        decodedData = decodedData[6:8] + ',' + decodedData[3:5] + ',' + decodedData[0:2] + ',' + decodedData[9:-3].replace(' ', '')
+                        # PP RR TT DD DD DD DD DD DD DD CC - where PP = priority, RR = receiver ID, TT = transmitter ID, DD = data, CC = checksum.
+                        decodedData = decodedData[3:5] + ',' + decodedData[6:8] + ',' + decodedData[0:2] + ',' + \
+                                      decodedData[9:-2].replace(' ', '') + 'e'  # add end char to unify decoding in main
                     self.receivedPacketSignal.emit(decodedData, time.time())
                 except UnicodeDecodeError as e:
                     print(e)
@@ -71,7 +76,12 @@ class SerialReaderThread(QThread):
                 # Disconnect of USB->UART occured
                 print("Serial disconnected")
                 print(e)
-                self.port.close()
+                self.serial.close()
+            except OSError as e:
+                # Disconnect of USB->UART occured
+                print("Serial disconnected")
+                print(e)
+                self.serial.close()
             else:
                 if len(data):
                     self.buf.extend(data)

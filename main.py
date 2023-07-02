@@ -424,37 +424,41 @@ class canSnifferGUI(QMainWindow, canSniffer_ui.Ui_MainWindow):
         self.startSniffingButton.setEnabled(False)
         self.stopSniffingButton.setEnabled(True)
         self.sendTxTableButton.setEnabled(True)
-        self.activeChannelComboBox.setEnabled(False)
-
+        print("Start sniffing ...")
         if self.activeChannelComboBox.isEnabled():
             # only for CAN :
             if self.activeChannelComboBox.currentIndex() < 3:
+                self.serialReaderThread.changeProtocol('CAN')
                 txBuf = [0x42, self.activeChannelComboBox.currentIndex()]   # TX FORWARDER
                 self.serialWriterThread.write(txBuf)
                 txBuf = [0x41, 1 << self.activeChannelComboBox.currentIndex()]  # RX FORWARDER
                 self.serialWriterThread.write(txBuf)
             elif self.activeChannelComboBox.currentIndex() == 3:
+                self.serialReaderThread.changeProtocol('SCP')
+                print("SCP init")
                 # reset OBD II UART
-                self.serialWriterThread.write(b'ATZ\r')
+                self.serialController.write(b'ATZ\r')
                 time.sleep(0.5)
                 # set Line Feed Mode
-                self.serialWriterThread.write(b'ATL1\r')
+                self.serialController.write(b'ATL1\r')
                 time.sleep(0.5)
                 # set message headers ON
-                self.serialWriterThread.write(b'ATH1\r')
+                self.serialController.write(b'ATH1\r')
                 time.sleep(0.5)
                 # set spaces between bytes to ON
-                self.serialWriterThread.write(b'ATS1\r')
+                self.serialController.write(b'ATS1\r')
                 time.sleep(0.5)
                 # allow messages that are longer than 7 bytes
-                self.serialWriterThread.write(b'ATAL\r')
+                self.serialController.write(b'ATAL\r')
                 time.sleep(0.5)
                 # set protocol to SAE J1850 PWM (41.6 kbaud)
-                self.serialWriterThread.write(b'ATSP1\r')
+                self.serialController.write(b'ATSP1\r')
                 time.sleep(0.5)
                 # read All message
-                self.serialWriterThread.write(b'ATMA\r')
-
+                self.serialController.write(b'ATMA\r')
+                time.sleep(0.5)
+                print("init Done!")
+        self.activeChannelComboBox.setEnabled(False)
         self.startTime = time.time()
 
     def stopSniffing(self):
@@ -467,8 +471,8 @@ class canSnifferGUI(QMainWindow, canSniffer_ui.Ui_MainWindow):
     def serialPacketReceiverCallback(self, packet, time):
         if self.startSniffingButton.isEnabled():
             return
-        packetSplit = packet[:-1].split(',')
 
+        packetSplit = packet[:-1].split(',')
         if len(packetSplit) != 4:
             print("wrong packet!" + packet)
             self.snifferMsgPlainTextEdit.document().setPlainText(packet)
@@ -479,6 +483,7 @@ class canSnifferGUI(QMainWindow, canSniffer_ui.Ui_MainWindow):
         DLC = len(packetSplit[3]) // 2
         rowData.append(str("{:02X}".format(DLC)))  # DLC
         if DLC > 0:
+            #print(f'packet split : {packetSplit[3]}')
             rowData += [packetSplit[3][i:i + 2] for i in range(0, len(packetSplit[3]), 2)]  # data
 
         self.mainTablePopulatorCallback(rowData)

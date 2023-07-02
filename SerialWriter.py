@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 import queue
-
+import serial
 
 class SerialWriterThread(QThread):
     packetSentSignal = pyqtSignal()
@@ -38,9 +38,18 @@ class SerialWriterThread(QThread):
         while self.isRunning:
             if not self.writerQ.empty():
                 element = self.writerQ.get()
-                if isinstance(element, list):
+                if isinstance(element, bytes):
+                    num = self.serial.write(element)
+                    try:
+                        incomingBytesNum = max(1, min(2048, self.serial.in_waiting))
+                        data = self.serial.read(incomingBytesNum)
+                        print(data)
+                    except serial.SerialException as e:
+                        print(e)
+                        pass
+                elif isinstance(element, list):
                     num = self.serial.write(bytearray(element))
-                    #print(bytearray(element))
+                    #print(bytearray(element)
                 else:
                     num = self.serial.write(element.encode("utf-8"))
                     #print(element.encode("utf-8"))

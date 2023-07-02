@@ -16,7 +16,7 @@ try:
     time.sleep(0.5)
     obdReader.write(b'ATAL\r')
     time.sleep(0.5)
-    obdReader.write(b'ATSP1\r')
+    obdReader.write(b'ATSP6\r')
     time.sleep(0.5)
     obdReader.write(b'ATMA\r')
     while True:
